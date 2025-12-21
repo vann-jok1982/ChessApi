@@ -112,15 +112,17 @@ public class GameService {
     }
 
     /**
-     * ♟️ СДЕЛАТЬ ХОД
+     * ♟️ СДЕЛАТЬ ХОД (исправленная версия)
      */
+    @Transactional
     public GameResponse makeMove(String publicId, MoveRequest request) {
+        Game game = null;
         try {
             log.info("Ход в игре {}: {} от игрока {}",
                     publicId, request.getNotation(), request.getPlayerId());
 
-            // 1. Находим игру
-            Game game = gameRepository.findByPublicId(publicId)
+            // 1. Находим игру с пессимистичной блокировкой
+            game = gameRepository.findByPublicIdForUpdate(publicId)
                     .orElseThrow(() -> new IllegalArgumentException("Игра не найдена: " + publicId));
 
             // 2. Проверяем статус
@@ -128,60 +130,132 @@ public class GameService {
                 return GameResponse.error("Игра не активна. Статус: " + game.getStatus());
             }
 
-            // 3. Находим игрока
-            Player player = playerRepository.findByTelegramId(String.valueOf(request.getPlayerId()))
-                    .orElseThrow(() -> new IllegalArgumentException("Игрок не найден: " + request.getPlayerId()));
+            // 3. Проверяем предложение ничьи
+            if (game.getDrawOfferedBy() != null) {
+                return GameResponse.error("Ожидается ответ на предложение ничьи");
+            }
 
-            // 4. Проверяем что игрок участвует в игре
+            // 4. Находим игрока
+            Player player = playerRepository.findByTelegramId(String.valueOf(request.getPlayerId()))
+                    .orElseThrow(() -> new IllegalArgumentException("Игрок не найден"));
+
+            // 5. Проверяем участие
             if (!game.isPlayerInGame(player.getId())) {
                 return GameResponse.error("Вы не участвуете в этой игре");
             }
 
-            // 5. СОЗДАЁМ НОВЫЙ ДВИЖОК ИЗ ТЕКУЩЕГО FEN
-            ChessEngine engine = createEngineFromFen(game.getCurrentFen());
+            // 6. Создаём движок из текущего состояния
+            ChessEngine engine = new ChessEngine(game.getCurrentFen());
 
-            // 6. Проверяем очередь хода
+            // 7. Проверяем очередь хода
             Color playerColor = game.getPlayerColor(player.getId());
-            Color currentTurn = Color.fromString(engine.getSideToMove());
-
-            if (playerColor != currentTurn) {
-                return GameResponse.error("Не ваша очередь. Сейчас ходят: " + currentTurn);
+            if (!engine.getSideToMove().equals(playerColor.toString())) {
+                return GameResponse.error("Не ваша очередь. Сейчас ходят: " + engine.getSideToMove());
             }
 
-            // 7. Пробуем сделать ход
+            // 8. Проверяем особые случаи
+            if (isSpecialMove(request.getNotation())) {
+                return handleSpecialMove(game, player, request, engine);
+            }
+
+            // 9. Пробуем сделать ход
             boolean moveSuccess = engine.makeMove(request.getNotation());
             if (!moveSuccess) {
                 return GameResponse.error("Недопустимый ход: " + request.getNotation());
             }
 
-            // 8. Сохраняем ход в БД
-            int moveNumber = moveRepository.countByGame(game) + 1;
-            Move move = Move.builder()
-                    .game(game)
-                    .moveNumber(moveNumber)
-                    .notation(request.getNotation())
-                    .fenAfter(engine.getFen())
-                    .build();
+            // 10. Сохраняем ход
+            saveMove(game, request.getNotation(), engine.getFen());
 
-            moveRepository.save(move);
+            // 11. Обновляем игру
+            updateGameAfterMove(game, engine);
 
-            // 9. Обновляем игру в БД
-            game.setCurrentFen(engine.getFen());
-            game.setCurrentTurn(engine.getSideToMove());
-
-            // 10. Проверяем окончание игры
-            updateGameStatus(game, engine);
-            game = gameRepository.save(game);
-
-            log.info("✅ Ход {} (№{}) выполнен в игре {}",
-                    request.getNotation(), moveNumber, publicId);
-
+            log.info("✅ Ход {} выполнен в игре {}", request.getNotation(), publicId);
             return buildGameResponse(game, player.getId(), engine);
 
         } catch (Exception e) {
             log.error("❌ Ошибка выполнения хода: {}", e.getMessage(), e);
             return GameResponse.error("Ошибка хода: " + e.getMessage());
         }
+    }
+
+    private boolean isSpecialMove(String notation) {
+        // Проверяем на рокировку
+        if (notation.equalsIgnoreCase("O-O") || notation.equalsIgnoreCase("O-O-O")) {
+            return true;
+        }
+
+        // Проверяем на превращение пешки
+        return notation.contains("=");
+    }
+
+    private GameResponse handleSpecialMove(Game game, Player player,
+                                           MoveRequest request, ChessEngine engine) {
+        // Обработка рокировки
+        if (request.getNotation().equalsIgnoreCase("O-O")) {
+            // Короткая рокировка
+            String move = engine.getSideToMove().equals("WHITE") ? "e1g1" : "e8g8";
+            return executeMove(game, player, move, engine);
+        }
+        else if (request.getNotation().equalsIgnoreCase("O-O-O")) {
+            // Длинная рокировка
+            String move = engine.getSideToMove().equals("WHITE") ? "e1c1" : "e8c8";
+            return executeMove(game, player, move, engine);
+        }
+
+        // Обработка превращения пешки
+        if (request.getNotation().contains("=")) {
+            // Пример: e7e8=Q
+            String[] parts = request.getNotation().split("=");
+            if (parts.length == 2) {
+                String move = parts[0]; // e7e8
+                String promotion = parts[1].toUpperCase(); // Q
+                return executeMove(game, player, move + promotion.toLowerCase(), engine);
+            }
+        }
+
+        return GameResponse.error("Некорректный специальный ход: " + request.getNotation());
+    }
+
+    private GameResponse executeMove(Game game, Player player,
+                                     String moveNotation, ChessEngine engine) {
+        if (engine.makeMove(moveNotation)) {
+            saveMove(game, moveNotation, engine.getFen());
+            updateGameAfterMove(game, engine);
+            return buildGameResponse(game, player.getId(), engine);
+        }
+        return GameResponse.error("Недопустимый ход: " + moveNotation);
+    }
+
+    private void saveMove(Game game, String notation, String fenAfter) {
+        int moveNumber = moveRepository.countByGame(game) + 1;
+        Move move = Move.builder()
+                .game(game)
+                .moveNumber(moveNumber)
+                .notation(notation)
+                .fenAfter(fenAfter)
+                .build();
+        moveRepository.save(move);
+    }
+
+    private void updateGameAfterMove(Game game, ChessEngine engine) {
+        game.setCurrentFen(engine.getFen());
+        game.setCurrentTurn(engine.getSideToMove());
+
+        // Проверяем окончание игры
+        if (engine.isCheckmate()) {
+            game.setStatus(game.getCurrentTurn().equals("WHITE") ?
+                    Game.GameStatus.BLACK_WIN : Game.GameStatus.WHITE_WIN);
+            updatePlayerRatings(game);
+        } else if (engine.isStalemate() || engine.isDraw()) {
+            game.setStatus(Game.GameStatus.DRAW);
+            updatePlayerRatings(game);
+        } else if (engine.isThreefoldRepetition()) {
+            log.info("Трёхкратное повторение позиции в игре {}", game.getPublicId());
+            // Можно предложить ничью автоматически
+        }
+
+        gameRepository.save(game);
     }
 
     /**

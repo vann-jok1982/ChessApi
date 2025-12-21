@@ -1,7 +1,9 @@
 package com.chessapi.repository;
 
 import com.chessapi.model.Game;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -111,6 +113,11 @@ public interface GameRepository extends JpaRepository<Game, Long> {
             "OR g.blackPlayer.id = :playerId " +
             "ORDER BY g.createdAt DESC")
     List<Game> findGamesByPlayerId(@Param("playerId") Long playerId);
+
+    // Для блокировки при ходе
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT g FROM Game g WHERE g.publicId = :publicId")
+    Optional<Game> findByPublicIdForUpdate(@Param("publicId") String publicId);
 
     /**
      * Дефолтный метод для удобства
