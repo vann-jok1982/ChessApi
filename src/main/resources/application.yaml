@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: Chessapi
+  datasource:
+    url: jdbc:postgresql://localhost:5432/chess_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  # Настройки JPA
+  jpa:
+    hibernate:
+      ddl-auto: create
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        show_sql: true
+    # Liquibase (если используешь)
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    enabled: true
+
+  # Swagger
+  springdoc:
+    api-docs:
+      path: /api-docs
+    swagger-ui:
+      path: /swagger-ui.html
+
+  logging:
+    level:
+      com.chessapi: DEBUG
+      org.springframework.web: INFO
+      org.hibernate.SQL: DEBUG
+      org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  mvc:
+    hiddenmethod:
+      filter:
+        enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: metrics, prometheus
+  endpoint:
+    health:
+      show-details: always
+
+
+
+server:
+  port: 8081  # Отличный от бота (бот будет на 8080)
+  servlet:
+    context-path: /api
+
+# Swagger UI будет доступен по http://localhost:8081/swagger-ui.html
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+logging:
+  level:
+    com.chessapi: INFO
+  pattern:
+    console: "%d{HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
