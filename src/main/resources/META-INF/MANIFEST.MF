@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Main-Class: C:\Users\Хозяин\LessonProjekt\Chessapi\src\main\java\c
+ om\chessapi\ChessapiApplication.java
+
