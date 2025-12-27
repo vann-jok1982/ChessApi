@@ -931,7 +931,7 @@ public class ChessEngine {
     }
 
     /**
-     * Получить текущую позицию в формате для отображения
+     * Получить текущую позицию в формате для отображения.
      */
     public String getPositionForDisplay() {
         String boardText = board.toString();
