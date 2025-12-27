@@ -24,7 +24,7 @@ jobs:
         run: mvn clean compile -DskipTests
 
       - name: Run Tests
-        run: mvn test
+        run: mvn test -Dspring.profiles.active=test
 
       - name: Package
         run: mvn clean package -DskipTests
