@@ -986,7 +986,7 @@ public class ChessEngine {
 //    }
 
     /**
-     * Проверить, является ли ход шахом...
+     * Проверить, является ли ход шахом....
      */
     public boolean isMoveCheck(String notation) {
         try {
