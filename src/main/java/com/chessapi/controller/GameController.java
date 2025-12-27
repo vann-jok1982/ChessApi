@@ -67,7 +67,7 @@ public class GameController {
     // Новые endpoints для будущего
     @GetMapping("/{gameId}/moves")
     public ResponseEntity<List<Move>> getGameMoves(@PathVariable String gameId) {
-        // TODO: реализовать
+        // TODO: реализовать.
         return ResponseEntity.ok(List.of());
     }
 
