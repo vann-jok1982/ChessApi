@@ -13,62 +13,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download JAR from CI
-        uses: actions/github-script@v6
-        id: download-artifact
-        with:
-          script: |
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.payload.workflow_run.id,
-            });
-            
-            const jarArtifact = artifacts.data.artifacts.find(a => a.name === "chessapi-jar");
-            
-            const download = await github.rest.actions.downloadArtifact({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              artifact_id: jarArtifact.id,
-              archive_format: 'zip',
-            });
-            
-            const fs = require('fs');
-            fs.writeFileSync('/tmp/artifact.zip', Buffer.from(download.data));
-            
-            return "done";
-
-      - name: Extract JAR
-        run: |
-          mkdir -p /tmp/artifact
-          unzip /tmp/artifact.zip -d /tmp/artifact
-          ls -la /tmp/artifact/
-
       - name: Deploy to Server
         uses: appleboy/ssh-action@v0.1.5
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
           script: |
-            echo "=== Начало деплоя ==="
+            echo "✅ Подключение успешно!"
             cd /opt/chessapi
-            
-            # Копируем JAR с GitHub Actions
-            scp -o StrictHostKeyChecking=no runner@github.com:/tmp/artifact/*.jar . 2>/dev/null || echo "Используем альтернативный метод"
-            
-            # Или если scp не работает - просто пересобираем на сервере
             git pull origin main
             mvn clean package -DskipTests
-            
-            # Останавливаем и удаляем старый контейнер
             docker stop chessapi 2>/dev/null || true
             docker rm chessapi 2>/dev/null || true
-            
-            # Собираем Docker образ
             docker build -t chessapi:latest .
-            
-            # Запускаем новый контейнер
             docker run -d \
               --name chessapi \
               --network host \
@@ -79,7 +38,5 @@ jobs:
               --spring.datasource.username=postgres \
               --spring.datasource.password=postgres
             
-            echo "=== Деплой завершен ==="
-            echo "Проверяем статус..."
-            sleep 3
-            docker ps | grep chessapi && echo "✅ Контейнер запущен" || echo "❌ Ошибка запуска"
+            echo "✅ Деплой завершен!"
+            docker ps | grep chessapi
