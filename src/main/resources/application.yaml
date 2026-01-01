@@ -49,7 +49,7 @@ management:
 
 
 server:
-  port: 8081  # Отличный от бота (бот будет на 8080)
+  port: 8080  # Отличный от бота
   servlet:
     context-path: /api
 
