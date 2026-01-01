@@ -22,21 +22,26 @@ jobs:
           port: 22
           script: |
             echo "✅ Подключение успешно!"
+
             cd /opt/chessapi
             git pull origin main
             mvn clean package -DskipTests
+
             docker stop chessapi 2>/dev/null || true
             docker rm chessapi 2>/dev/null || true
+
             docker build -t chessapi:latest .
+
+            # ЗАПУСК С ПОРТОМ
             docker run -d \
               --name chessapi \
-              --network host \
+              -p 8080:8080 \  # ← ДОБАВИТЬ ЭТУ СТРОЧКУ!
               chessapi:latest \
               --server.port=8080 \
               --server.address=0.0.0.0 \
               --spring.datasource.url=jdbc:postgresql://localhost:5432/chessdb \
               --spring.datasource.username=postgres \
               --spring.datasource.password=postgres
-            
+
             echo "✅ Деплой завершен!"
             docker ps | grep chessapi
