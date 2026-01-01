@@ -21,27 +21,67 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
+            # Установим безопасный режим
+            set -e
+            
             echo "✅ Подключение успешно!"
-
+            
+            # ========== CHESS API ==========
+            echo "🚀 Деплой Chess API..."
+            
+            # Проверяем существование папки
+            if [ ! -d "/opt/chessapi" ]; then
+              echo "❌ Папка /opt/chessapi не найдена!"
+              exit 1
+            fi
+            
             cd /opt/chessapi
-            git pull origin main
-            mvn clean package -DskipTests
-
+            
+            # Обновляем код
+            git pull origin main || echo "⚠️ Не удалось обновить git"
+            
+            # Собираем проект
+            mvn clean package -DskipTests || {
+              echo "❌ Ошибка сборки API"
+              exit 1
+            }
+            
+            # Останавливаем старый контейнер
             docker stop chessapi 2>/dev/null || true
             docker rm chessapi 2>/dev/null || true
-
-            docker build -t chessapi:latest .
-
-            # ЗАПУСК С ПОРТОМ
+            
+            # Собираем образ
+            docker build -t chessapi:latest . || {
+              echo "❌ Ошибка сборки Docker образа API"
+              exit 1
+            }
+            
+            # ЗАПУСКАЕМ API С ПОРТОМ 8080:8080
+            echo "Запускаем chessapi с портом 8080:8080..."
             docker run -d \
               --name chessapi \
-              -p 8080:8080 \  # ← ДОБАВИТЬ ЭТУ СТРОЧКУ!
+              -p 8080:8080 \
               chessapi:latest \
               --server.port=8080 \
               --server.address=0.0.0.0 \
               --spring.datasource.url=jdbc:postgresql://localhost:5432/chessdb \
               --spring.datasource.username=postgres \
-              --spring.datasource.password=postgres
-
-            echo "✅ Деплой завершен!"
-            docker ps | grep chessapi
+              --spring.datasource.password=postgres || {
+                echo "❌ Ошибка запуска контейнера chessapi"
+                docker logs chessapi --tail 20 2>/dev/null || true
+                exit 1
+              }
+            
+            # Ждем запуска
+            echo "⏳ Ждем запуска API (20 секунд)..."
+            sleep 20
+            
+            # Проверяем API
+            echo "🔍 Проверяем API..."
+            if curl -s --max-time 10 http://localhost:8080/actuator/health > /dev/null; then
+              echo "✅ API работает!"
+            else
+              echo "❌ API не отвечает"
+              docker logs chessapi --tail 30
+              exit 1
+            fi
