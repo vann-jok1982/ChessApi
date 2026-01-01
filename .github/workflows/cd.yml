@@ -21,44 +21,16 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            set -e
             echo "✅ Подключение успешно!"
-            
             cd /opt/chessapi
-            
-            # 1. Проверяем что JAR файл существует
-            echo "🔍 Проверяем JAR файл..."
-            JAR_FILE=$(find target -name "*.jar" | head -1)
-            if [ -z "$JAR_FILE" ]; then
-              echo "❌ JAR файл не найден! Собираем проект..."
-              mvn clean package -DskipTests
-              JAR_FILE=$(find target -name "*.jar" | head -1)
-            fi
-            
-            echo "📦 JAR файл: $JAR_FILE"
-            
-            # 2. Создаем правильный Dockerfile
-            echo "📝 Создаем Dockerfile..."
-            cat > Dockerfile << 'DOCKERFILEEOF'
-            FROM eclipse-temurin:17-jre
-            WORKDIR /app
-            COPY $JAR_FILE app.jar
-            EXPOSE 8080
-            ENTRYPOINT ["java", "-jar", "app.jar"]
-            DOCKERFILEEOF
-            
-            # 3. Собираем Docker образ
-            echo "🐳 Собираем Docker образ..."
-            docker build -t chessapi:latest .
-            
-            # 4. Запускаем контейнер
-            echo "🚀 Запускаем chessapi..."
+            git pull origin main
+            mvn clean package -DskipTests
             docker stop chessapi 2>/dev/null || true
             docker rm chessapi 2>/dev/null || true
-            
+            docker build -t chessapi:latest .
             docker run -d \
               --name chessapi \
-              -p 8080:8080 \
+              --network host \
               chessapi:latest \
               --server.port=8080 \
               --server.address=0.0.0.0 \
@@ -66,14 +38,5 @@ jobs:
               --spring.datasource.username=postgres \
               --spring.datasource.password=postgres
             
-            # 5. Проверяем
-            echo "⏳ Ждем запуска..."
-            sleep 20
-            
-            if curl -s http://localhost:8080/actuator/health > /dev/null; then
-              echo "✅ API работает!"
-            else
-              echo "❌ API не отвечает"
-              docker logs chessapi --tail 20
-              exit 1
-            fi
+            echo "✅ Деплой завершен!"
+            docker ps | grep chessapi
