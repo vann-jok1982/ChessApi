@@ -36,13 +36,26 @@ public class GameService {
             // 1. Находим или создаём игрока
             Player player = findOrCreatePlayer(request.getPlayerId(), request.getPlayerName());
 
-            // 2. Проверяем нет ли активных игр
+
+            // Просто удаляем старую игру, если есть ### короткий вариант
+//            gameRepository.findActiveGamesByPlayer(player.getId())
+//                    .forEach(game -> {
+//                        moveRepository.deleteByGameId(game.getId());
+//                        gameRepository.delete(game);
+//                    });
+            // 2. Просто удаляем старую игру, если есть
             List<Game> activeGames = gameRepository.findActiveGamesByPlayer(player.getId());
             if (!activeGames.isEmpty()) {
-                log.warn("У игрока {} уже есть активная игра {}",
-                        player.getId(), activeGames.get(0).getPublicId());
-                return GameResponse.error("У вас уже есть активная игра: " +
-                        activeGames.get(0).getPublicId());
+                for (Game game : activeGames) {
+                    if (game!=null){
+                        moveRepository.deleteByGameId(game.getId());
+                        gameRepository.delete(game);
+                        log.warn("У игрока {} , была удалена активная игра {}",
+                        player.getId(), game.getPublicId());
+                    }
+                }
+//                        return GameResponse.error("У вас уже есть активная игра: " +
+//                        activeGames.get(0).getPublicId());
             }
 
             // 3. Создаём шахматный движок для получения начального FEN
@@ -90,6 +103,18 @@ public class GameService {
             // 4. Проверяем что игрок не присоединяется к своей же игре
             if (game.getWhitePlayer().getId().equals(player.getId())) {
                 return GameResponse.error("Вы уже создали эту игру");
+            }
+            // 4.2. удаляем если есть активная игра
+            List<Game> activeGames = gameRepository.findActiveGamesByPlayer(player.getId());
+            if (!activeGames.isEmpty()) {
+                for (Game game1 : activeGames) {
+                    if (game1!=null){
+                        moveRepository.deleteByGameId(game1.getId());
+                        gameRepository.delete(game1);
+                        log.warn("У игрока  {} , была удалена активная игра {}",
+                                player.getId(), game1.getPublicId());
+                    }
+                }
             }
 
             // 5. Создаём движок для получения начального FEN
@@ -512,7 +537,7 @@ public class GameService {
         }
 
         return GameResponse.PlayerInfo.builder()
-                .id(player.getId())
+                .id(Long.valueOf(player.getTelegramId()))
                 .name(player.getUsername())
                 .color(color)
                 .rating(player.getRating())

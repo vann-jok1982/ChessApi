@@ -1,0 +1,59 @@
+# .github/workflows/deploy.yml
+name: Deploy Chess API
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: 🔨 Build API
+        run: |
+          mvn clean package -DskipTests
+          echo "✅ JAR создан:"
+          ls -lh target/*.jar
+
+      - name: 🔐 Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: 📤 Upload API JAR
+        run: |
+          echo "📤 Загружаем JAR на сервер..."
+          scp -i ~/.ssh/id_rsa \
+            target/*.jar \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/chess-system/api/app.jar
+          echo "✅ JAR загружен"
+
+      - name: 🚀 Restart API Service
+        run: |
+          echo "🚀 Перезапускаем сервис chess-api..."
+          ssh -i ~/.ssh/id_rsa \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "cd /opt/chess-system && \
+             docker stop chess-api 2>/dev/null || true && \
+             docker rm -f chess-api 2>/dev/null || true && \
+             docker compose up -d --build chess-api"
+
+      - name: ✅ Verify API
+        run: |
+          echo "✅ Проверяем деплой..."
+          ssh -i ~/.ssh/id_rsa \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "sleep 15 && curl -s http://localhost:8080/api/games/test && echo '' && docker ps --filter 'name=chess-api' --format 'table {{.Names}}\\t{{.Status}}'"
