@@ -1,0 +1,198 @@
+/* Шахматная доска */
+.game-container {
+    display: grid;
+    grid-template-columns: 300px 1fr 300px;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.chessboard-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#chessboard {
+    width: 600px;
+    height: 600px;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    border: 3px solid var(--dark-color);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.chess-square {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.chess-square.light {
+    background-color: #f0d9b5;
+}
+
+.chess-square.dark {
+    background-color: #b58863;
+}
+
+.chess-square:hover {
+    box-shadow: inset 0 0 0 3px var(--secondary-color);
+}
+
+.chess-square.selected {
+    box-shadow: inset 0 0 0 3px var(--accent-color);
+}
+
+.chess-square.valid-move::after {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: rgba(46, 204, 113, 0.5);
+    position: absolute;
+}
+
+/* Информация об игре */
+.game-info, .game-chat {
+    background-color: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.player-info {
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
+
+.white-player {
+    background-color: #ecf0f1;
+    border-left: 5px solid white;
+}
+
+.black-player {
+    background-color: #2c3e50;
+    color: white;
+    border-left: 5px solid black;
+}
+
+.player-time {
+    font-size: 2rem;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    margin-top: 0.5rem;
+}
+
+.game-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.btn-danger {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.btn-warning {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+.moves-history {
+    margin-top: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.move-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid #eee;
+    font-family: monospace;
+}
+
+.move-item:nth-child(odd) {
+    background-color: #f8f9fa;
+}
+
+/* Чат */
+.chat-messages {
+    height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: #f8f9fa;
+}
+
+.chat-input {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+/* Статус игры */
+.game-status {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #e8f4fc;
+    border-radius: 8px;
+    border-left: 4px solid var(--secondary-color);
+}
+
+.spectators {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.board-controls {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+/* Адаптивность для шахматной доски */
+@media (max-width: 1200px) {
+    .game-container {
+        grid-template-columns: 250px 1fr 250px;
+    }
+
+    #chessboard {
+        width: 500px;
+        height: 500px;
+    }
+}
+
+@media (max-width: 992px) {
+    .game-container {
+        grid-template-columns: 1fr;
+    }
+
+    #chessboard {
+        width: 400px;
+        height: 400px;
+    }
+}
+
+@media (max-width: 576px) {
+    #chessboard {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1/1;
+    }
+}

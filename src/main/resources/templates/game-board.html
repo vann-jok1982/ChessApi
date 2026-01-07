@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="'Игра #' + ${gameId}">Шахматная доска</title>
+    <link rel="stylesheet" th:href="@{/css/chessboard.css}">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-brand">
+            <i class="fas fa-chess-board"></i>
+            <span th:text="'Игра #' + ${gameId}"></span>
+        </div>
+        <ul class="navbar-menu">
+            <li><a th:href="@{/web/}"><i class="fas fa-home"></i> На главную</a></li>
+            <li><a th:href="@{/web/games}"><i class="fas fa-list"></i> Все игры</a></li>
+            <li><button id="copyLinkBtn"><i class="fas fa-link"></i> Скопировать ссылку</button></li>
+        </ul>
+    </div>
+</nav>
+
+<main class="container">
+    <div class="game-container">
+        <!-- Левая панель - информация об игре -->
+        <div class="game-info">
+            <div class="player-info white-player">
+                <h3><i class="fas fa-chess-king"></i> Белые</h3>
+                <p id="whitePlayer">Ожидание игрока...</p>
+                <div class="player-time" id="whiteTime">10:00</div>
+            </div>
+
+            <div class="game-controls">
+                <button id="resignBtn" class="btn btn-danger">
+                    <i class="fas fa-flag"></i> Сдаться
+                </button>
+                <button id="offerDrawBtn" class="btn btn-warning">
+                    <i class="fas fa-handshake"></i> Предложить ничью
+                </button>
+                <button id="flipBoardBtn" class="btn btn-secondary">
+                    <i class="fas fa-sync-alt"></i> Перевернуть доску
+                </button>
+            </div>
+
+            <div class="player-info black-player">
+                <h3><i class="fas fa-chess-king"></i> Черные</h3>
+                <p id="blackPlayer">Ожидание игрока...</p>
+                <div class="player-time" id="blackTime">10:00</div>
+            </div>
+
+            <!-- История ходов -->
+            <div class="moves-history">
+                <h4><i class="fas fa-history"></i> История ходов</h4>
+                <div id="movesList"></div>
+            </div>
+        </div>
+
+        <!-- Центральная часть - шахматная доска -->
+        <div class="chessboard-container">
+            <div id="chessboard"></div>
+            <div class="board-controls">
+                <button id="prevMoveBtn"><i class="fas fa-backward"></i></button>
+                <button id="nextMoveBtn"><i class="fas fa-forward"></i></button>
+                <button id="autoPlayBtn"><i class="fas fa-play"></i></button>
+            </div>
+        </div>
+
+        <!-- Правая панель - чат и статус -->
+        <div class="game-chat">
+            <div class="chat-messages" id="chatMessages">
+                <!-- Сообщения чата будут здесь -->
+            </div>
+            <div class="chat-input">
+                <input type="text" id="chatInput" placeholder="Введите сообщение...">
+                <button id="sendChatBtn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+
+            <div class="game-status">
+                <h4><i class="fas fa-info-circle"></i> Статус игры</h4>
+                <p id="gameStatus">Ожидание второго игрока...</p>
+                <p id="currentTurn">Ход: <span>белых</span></p>
+            </div>
+
+            <div class="spectators">
+                <h4><i class="fas fa-eye"></i> Наблюдатели: <span id="spectatorCount">0</span></h4>
+                <div id="spectatorList"></div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- WebSocket соединение -->
+<script th:inline="javascript">
+    const gameId = [[${gameId}]];
+    const wsUrl = [[${wsUrl}]] || ('ws://' + window.location.host + '/ws/game/' + gameId);
+
+    // Подключаем WebSocket
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = function() {
+        console.log('WebSocket соединение установлено');
+    };
+
+    socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        handleGameUpdate(data);
+    };
+
+    socket.onclose = function() {
+        console.log('WebSocket соединение закрыто');
+    };
+
+    // Функция для обновления состояния игры
+    function handleGameUpdate(data) {
+        // Обновляем доску
+        updateChessBoard(data.board);
+
+        // Обновляем информацию об игроках
+        document.getElementById('whitePlayer').textContent = data.whitePlayer || 'Ожидание...';
+        document.getElementById('blackPlayer').textContent = data.blackPlayer || 'Ожидание...';
+
+        // Обновляем время
+        document.getElementById('whiteTime').textContent = formatTime(data.whiteTime);
+        document.getElementById('blackTime').textContent = formatTime(data.blackTime);
+
+        // Обновляем статус
+        document.getElementById('gameStatus').textContent = data.status;
+        document.getElementById('currentTurn').innerHTML = 'Ход: <span>' +
+            (data.currentTurn === 'WHITE' ? 'белых' : 'черных') + '</span>';
+
+        // Обновляем историю ходов
+        updateMovesHistory(data.moves);
+    }
+
+    function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    function updateChessBoard(fen) {
+        // Здесь будет логика отрисовки доски
+        // Можно использовать chessboard.js или собственную реализацию
+        console.log('Обновление доски с FEN:', fen);
+    }
+
+    function updateMovesHistory(moves) {
+        const movesList = document.getElementById('movesList');
+        movesList.innerHTML = '';
+        moves.forEach((move, index) => {
+            const moveElement = document.createElement('div');
+            moveElement.className = 'move-item';
+            moveElement.textContent = `${index + 1}. ${move}`;
+            movesList.appendChild(moveElement);
+        });
+    }
+</script>
+
+<!-- Инициализация шахматной доски -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script>
+    // Простая реализация шахматной доски
+    function initChessBoard() {
+        const board = document.getElementById('chessboard');
+        board.innerHTML = '';
+
+        // Создаем 8x8 клеток
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const square = document.createElement('div');
+                square.className = 'chess-square ' +
+                    ((row + col) % 2 === 0 ? 'light' : 'dark');
+                square.id = `sq${row}${col}`;
+                square.dataset.row = row;
+                square.dataset.col = col;
+
+                // Добавляем обработчик клика
+                square.addEventListener('click', function() {
+                    handleSquareClick(row, col);
+                });
+
+                board.appendChild(square);
+            }
+        }
+    }
+
+    function handleSquareClick(row, col) {
+        const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+        const squareName = files[col] + (8 - row);
+        console.log('Кликнута клетка:', squareName);
+
+        // Отправляем ход на сервер через WebSocket
+        socket.send(JSON.stringify({
+            type: 'MOVE',
+            from: selectedSquare,
+            to: squareName,
+            gameId: gameId
+        }));
+    }
+
+    // Инициализация при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        initChessBoard();
+
+        // Копирование ссылки на игру
+        document.getElementById('copyLinkBtn').addEventListener('click', function() {
+            navigator.clipboard.writeText(window.location.href);
+            alert('Ссылка скопирована!');
+        });
+    });
+</script>
+</body>
+</html>

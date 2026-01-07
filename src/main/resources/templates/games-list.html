@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${title}">Список игр</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-brand">
+            <i class="fas fa-chess-knight"></i>
+            <span>ChessAPI</span>
+        </div>
+        <ul class="navbar-menu">
+            <li><a th:href="@{/web/}"><i class="fas fa-home"></i> Главная</a></li>
+            <li><a th:href="@{/web/new-game}"><i class="fas fa-plus-circle"></i> Новая игра</a></li>
+            <li><a th:href="@{/web/games}" class="active"><i class="fas fa-list"></i> Все игры</a></li>
+            <li><a th:href="@{/web/active-games}"><i class="fas fa-play-circle"></i> Активные</a></li>
+        </ul>
+    </div>
+</nav>
+
+<main class="container">
+    <div class="games-container">
+        <h1><i class="fas fa-list"></i> Все игры</h1>
+
+        <div class="games-filter">
+            <button class="btn btn-filter active" data-filter="all">Все</button>
+            <button class="btn btn-filter" data-filter="active">Активные</button>
+            <button class="btn btn-filter" data-filter="waiting">Ожидание</button>
+            <button class="btn btn-filter" data-filter="finished">Завершенные</button>
+        </div>
+
+        <div class="games-table">
+            <table>
+                <thead>
+                <tr>
+                    <th>ID игры</th>
+                    <th>Белые</th>
+                    <th>Черные</th>
+                    <th>Статус</th>
+                    <th>Создана</th>
+                    <th>Действия</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="game : ${games}"
+                    th:data-status="${game.status}"
+                    th:class="${game.status == 'В процессе' || game.status == 'Ожидание игрока'} ? 'active-game' : ''">
+                    <td th:text="${game.gameId}">12345</td>
+                    <td th:text="${game.whitePlayer}">Player1</td>
+                    <td th:text="${game.blackPlayer}">Player2</td>
+                    <td>
+                                <span th:text="${game.status}"
+                                      th:class="${game.status}">
+                                    В процессе
+                                </span>
+                    </td>
+                    <td th:text="${game.createdAt}">01.01.2024 12:00</td>
+                    <td>
+                        <a th:href="@{/web/game/{id}(id=${game.gameId})}"
+                           class="btn btn-sm btn-primary"
+                           th:if="${game.status == 'В процессе' or game.status == 'Ожидание игрока'}">
+                            <i class="fas fa-play"></i> Присоединиться
+                        </a>
+                        <a th:href="@{/web/game/{id}(id=${game.gameId})}"
+                           class="btn btn-sm btn-secondary"
+                           th:unless="${game.status == 'В процессе' or game.status == 'Ожидание игрока'}">
+                            <i class="fas fa-eye"></i> Просмотр
+                        </a>
+                    </td>
+                </tr>
+                <tr th:if="${games.isEmpty()}">
+                    <td colspan="6" class="no-games">
+                        <i class="fas fa-chess-board"></i>
+                        <p>Игр пока нет. Создайте первую!</p>
+                        <a th:href="@{/web/new-game}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Создать игру
+                        </a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script>
+    // Фильтрация игр
+    document.querySelectorAll('.btn-filter').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filter = this.dataset.filter;
+
+            // Обновляем активную кнопку
+            document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            // Фильтруем строки таблицы
+            document.querySelectorAll('tbody tr').forEach(row => {
+                if (row.classList.contains('no-games')) return;
+
+                const status = row.dataset.status;
+                let show = false;
+
+                if (filter === 'all') show = true;
+                else if (filter === 'active') show = status.includes('процессе') || status.includes('Ожидание');
+                else if (filter === 'waiting') show = status.includes('Ожидание');
+                else if (filter === 'finished') show = !status.includes('процессе') && !status.includes('Ожидание');
+
+                row.style.display = show ? '' : 'none';
+            });
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">Chess API</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<!-- Навигационная панель -->
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-brand">
+            <i class="fas fa-chess-knight"></i>
+            <span>ChessAPI</span>
+        </div>
+        <ul class="navbar-menu">
+            <li><a th:href="@{/web/}" class="active"><i class="fas fa-home"></i> Главная</a></li>
+            <li><a th:href="@{/web/new-game}"><i class="fas fa-plus-circle"></i> Новая игра</a></li>
+            <li><a th:href="@{/web/games}"><i class="fas fa-list"></i> Все игры</a></li>
+            <li><a th:href="@{/web/about}"><i class="fas fa-info-circle"></i> О проекте</a></li>
+        </ul>
+    </div>
+</nav>
+
+<!-- Главный контент -->
+<main class="container">
+    <div class="hero-section">
+        <h1>Добро пожаловать на шахматную платформу</h1>
+        <p>Играйте в шахматы онлайн с друзьями или против ИИ</p>
+        <div class="stats">
+            <div class="stat-card">
+                <i class="fas fa-gamepad"></i>
+                <h3 th:text="${activeGames} + ' игр'">0 игр</h3>
+                <p>Активные сейчас</p>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-users"></i>
+                <h3>24/7</h3>
+                <p>Доступно всегда</p>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-bolt"></i>
+                <h3>Real-time</h3>
+                <p>Онлайн-игра</p>
+            </div>
+        </div>
+
+        <div class="cta-buttons">
+            <a th:href="@{/web/new-game}" class="btn btn-primary btn-lg">
+                <i class="fas fa-play-circle"></i> Начать новую игру
+            </a>
+            <a th:href="@{/web/games}" class="btn btn-secondary btn-lg">
+                <i class="fas fa-eye"></i> Присоединиться к игре
+            </a>
+        </div>
+    </div>
+
+    <!-- Быстрый старт -->
+    <div class="quick-start">
+        <h2>Быстрый старт</h2>
+        <div class="game-options">
+            <div class="option-card">
+                <i class="fas fa-user-friends"></i>
+                <h3>С другом</h3>
+                <p>Создайте игру и отправьте ссылку другу</p>
+                <button class="btn btn-outline" onclick="createGame('WHITE')">Играть за белых</button>
+                <button class="btn btn-outline" onclick="createGame('BLACK')">Играть за черных</button>
+            </div>
+            <div class="option-card">
+                <i class="fas fa-robot"></i>
+                <h3>Против ИИ</h3>
+                <p>Сыграйте против компьютерного соперника</p>
+                <button class="btn btn-outline" onclick="createAIGame()">Начать игру</button>
+            </div>
+            <div class="option-card">
+                <i class="fas fa-eye"></i>
+                <h3>Наблюдать</h3>
+                <p>Смотрите текущие игры других игроков</p>
+                <a th:href="@{/web/games}" class="btn btn-outline">Смотреть игры</a>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Футер -->
+<footer>
+    <div class="container">
+        <p>&copy; 2024 Chess API Platform. Все права защищены.</p>
+        <div class="social-links">
+            <a href="#"><i class="fab fa-github"></i></a>
+            <a href="#"><i class="fab fa-telegram"></i></a>
+            <a href="#"><i class="fab fa-discord"></i></a>
+        </div>
+    </div>
+</footer>
+
+<!-- JavaScript -->
+<script>
+    function createGame(color) {
+        fetch('/api/games/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                playerName: 'Player_' + Math.floor(Math.random() * 1000),
+                playerColor: color
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                window.location.href = '/web/game/' + data.gameId;
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function createAIGame() {
+        fetch('/api/games/create-ai', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                playerName: 'Player_' + Math.floor(Math.random() * 1000)
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                window.location.href = '/web/game/' + data.gameId;
+            });
+    }
+</script>
+</body>
+</html>
