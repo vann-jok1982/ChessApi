@@ -1,5 +1,6 @@
 package com.chessapi.dto;
 
+import com.chessapi.model.Move;
 import lombok.Builder;
 import lombok.Data;
 
@@ -20,6 +21,10 @@ public class GameResponse {
     private Map<String, String> additionalInfo;
     private List<String> legalMoves; // Добавьте это поле
     private String playerColor;  // "WHITE", "BLACK" или "OBSERVER"
+
+    // ДОБАВЬТЕ ЭТО:
+    private String fen;              // FEN строка для веб-доски
+    private String pgn;              // PGN история (опционально)
 
     public static GameResponse success(GameResponse response) {
         response.setSuccess(true);

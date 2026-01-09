@@ -2,12 +2,14 @@ package com.chessapi.controller;
 
 import com.chessapi.dto.CreateGameRequest;
 import com.chessapi.dto.GameResponse;
+import com.chessapi.dto.MoveRequest;
 import com.chessapi.service.GameService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Slf4j
@@ -17,6 +19,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class WebController {
 
     private final GameService gameService;
+
 
     // GET - отображение формы создания игры
     @GetMapping("/new-game")
@@ -41,10 +44,8 @@ public class WebController {
             Long playerId = (long) Math.abs(playerName.hashCode());
 
             // Создаем запрос как в REST API
-            CreateGameRequest request = CreateGameRequest.builder()
-                    .playerId(playerId)
-                    .playerName(playerName)
-                    .build();
+            CreateGameRequest request = new CreateGameRequest(playerId, playerName);
+
 
             // Вызываем существующий сервис
             GameResponse response = gameService.createGame(request);
@@ -71,36 +72,39 @@ public class WebController {
     @GetMapping("/game/{gameId}")
     public String gameBoard(@PathVariable String gameId, Model model) {
         try {
-            // Для веб-пользователя используем playerId = 0 (наблюдатель)
-            GameResponse gameResponse = gameService.getGame(gameId, 0L);
+            log.info("Загрузка страницы игры: {}", gameId);
 
-            if (!gameResponse.isSuccess()) {
-                model.addAttribute("error", gameResponse.getMessage());
-                return "error";
-            }
+            // Получаем данные ПРЯМО из GameService
+            GameResponse gameResponse = gameService.getGameForWeb(gameId);
 
-            model.addAttribute("game", gameResponse);
             model.addAttribute("gameId", gameId);
-            model.addAttribute("title", "Игра #" + gameId);
-
-            // WebSocket URL (в продакшене заменить на реальный хост)
-            String wsUrl = "ws://" + getServerHost() + "/ws/game/" + gameId;
-            model.addAttribute("wsUrl", wsUrl);
+            model.addAttribute("gameResponse", gameResponse);
 
             return "game-board";
 
         } catch (Exception e) {
-            log.error("Error loading game {}", gameId, e);
-            model.addAttribute("error", "Игра не найдена");
+            log.error("Ошибка загрузки: {}", e.getMessage(), e);
+            model.addAttribute("error", e.getMessage());
+            model.addAttribute("gameId", gameId);
             return "error";
         }
+    }
+
+    private GameResponse getGameResponse(String publicId) {
+        // Создаем заглушку MoveRequest с playerId = 0 (наблюдатель)
+        MoveRequest request = new MoveRequest();
+        request.setPlayerId(0L);
+        request.setNotation(""); // Пустой ход, просто получить состояние
+
+        // Используем существующий метод или создаем новый
+        return gameService.getGameState(publicId, request);
     }
 
     // GET - главная страница
     @GetMapping("/")
     public String home(Model model) {
         model.addAttribute("title", "Chess API - Online Chess Platform");
-        model.addAttribute("activeGames", gameService.getActiveGamesCount());
+        model.addAttribute("activeGames", gameService.getWaitingGames());//список игр ожидающих
         return "index";
     }
 
@@ -108,7 +112,7 @@ public class WebController {
     @GetMapping("/games")
     public String gamesList(Model model) {
         model.addAttribute("title", "Список игр - Chess API");
-        model.addAttribute("games", gameService.getAllGames());
+        model.addAttribute("games", gameService.getWaitingGames());//список игр ожидающих
         return "games-list";
     }
 

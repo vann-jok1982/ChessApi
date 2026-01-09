@@ -3,213 +3,465 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="'Игра #' + ${gameId}">Шахматная доска</title>
-    <link rel="stylesheet" th:href="@{/css/chessboard.css}">
-    <link rel="stylesheet" th:href="@{/css/style.css}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title th:text="'Шахматы: ' + ${gameId}">Chess Game</title>
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Встроенные стили -->
+    <style>
+        /* Кастомные стили поверх Bootstrap */
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .game-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+        }
+
+        .game-id-badge {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            letter-spacing: 1px;
+        }
+
+        .player-card {
+            border-radius: 12px;
+            transition: transform 0.3s;
+        }
+
+        .player-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .white-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid #dee2e6;
+        }
+
+        .black-card {
+            background: linear-gradient(135deg, #212529 0%, #343a40 100%);
+            color: white;
+            border: 2px solid #000;
+        }
+
+        .chess-board-text {
+            font-family: 'Courier New', monospace;
+            white-space: pre;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+            font-size: 1.1em;
+            line-height: 1.4;
+            overflow-x: auto;
+        }
+
+        .fen-code {
+            font-family: 'Courier New', monospace;
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px;
+            border-radius: 5px;
+            word-break: break-all;
+        }
+
+        .status-badge {
+            font-size: 1em;
+            padding: 8px 16px;
+        }
+
+        .turn-indicator {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .piece-icon {
+            font-size: 2em;
+            margin-right: 10px;
+        }
+
+        .debug-info {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .chess-board-text {
+                font-size: 0.9em;
+                padding: 10px;
+            }
+
+            .player-card {
+                margin-bottom: 15px;
+            }
+        }
+    </style>
 </head>
 <body>
-<nav class="navbar">
-    <div class="container">
-        <div class="navbar-brand">
-            <i class="fas fa-chess-board"></i>
-            <span th:text="'Игра #' + ${gameId}"></span>
-        </div>
-        <ul class="navbar-menu">
-            <li><a th:href="@{/web/}"><i class="fas fa-home"></i> На главную</a></li>
-            <li><a th:href="@{/web/games}"><i class="fas fa-list"></i> Все игры</a></li>
-            <li><button id="copyLinkBtn"><i class="fas fa-link"></i> Скопировать ссылку</button></li>
-        </ul>
-    </div>
-</nav>
-
-<main class="container">
+<div class="container py-4">
+    <!-- Основной контейнер игры -->
     <div class="game-container">
-        <!-- Левая панель - информация об игре -->
-        <div class="game-info">
-            <div class="player-info white-player">
-                <h3><i class="fas fa-chess-king"></i> Белые</h3>
-                <p id="whitePlayer">Ожидание игрока...</p>
-                <div class="player-time" id="whiteTime">10:00</div>
-            </div>
-
-            <div class="game-controls">
-                <button id="resignBtn" class="btn btn-danger">
-                    <i class="fas fa-flag"></i> Сдаться
-                </button>
-                <button id="offerDrawBtn" class="btn btn-warning">
-                    <i class="fas fa-handshake"></i> Предложить ничью
-                </button>
-                <button id="flipBoardBtn" class="btn btn-secondary">
-                    <i class="fas fa-sync-alt"></i> Перевернуть доску
-                </button>
-            </div>
-
-            <div class="player-info black-player">
-                <h3><i class="fas fa-chess-king"></i> Черные</h3>
-                <p id="blackPlayer">Ожидание игрока...</p>
-                <div class="player-time" id="blackTime">10:00</div>
-            </div>
-
-            <!-- История ходов -->
-            <div class="moves-history">
-                <h4><i class="fas fa-history"></i> История ходов</h4>
-                <div id="movesList"></div>
+        <!-- Шапка -->
+        <div class="game-header p-4 text-center">
+            <h1 class="display-5 fw-bold mb-3">
+                <i class="fas fa-chess-king"></i> Шахматная партия
+            </h1>
+            <div class="game-id-badge badge bg-light text-dark fs-5 px-3 py-2">
+                <i class="fas fa-hashtag"></i>
+                <span th:text="${gameId}">G1767915632892_102</span>
             </div>
         </div>
 
-        <!-- Центральная часть - шахматная доска -->
-        <div class="chessboard-container">
-            <div id="chessboard"></div>
-            <div class="board-controls">
-                <button id="prevMoveBtn"><i class="fas fa-backward"></i></button>
-                <button id="nextMoveBtn"><i class="fas fa-forward"></i></button>
-                <button id="autoPlayBtn"><i class="fas fa-play"></i></button>
-            </div>
-        </div>
-
-        <!-- Правая панель - чат и статус -->
-        <div class="game-chat">
-            <div class="chat-messages" id="chatMessages">
-                <!-- Сообщения чата будут здесь -->
-            </div>
-            <div class="chat-input">
-                <input type="text" id="chatInput" placeholder="Введите сообщение...">
-                <button id="sendChatBtn"><i class="fas fa-paper-plane"></i></button>
-            </div>
-
-            <div class="game-status">
-                <h4><i class="fas fa-info-circle"></i> Статус игры</h4>
-                <p id="gameStatus">Ожидание второго игрока...</p>
-                <p id="currentTurn">Ход: <span>белых</span></p>
+        <!-- Основное содержимое -->
+        <div class="p-4">
+            <!-- Отладочная информация (можно скрыть позже) -->
+            <div class="debug-info mb-4">
+                <h5 class="mb-2"><i class="fas fa-bug"></i> Отладка:</h5>
+                <p class="mb-1">Данные получены:
+                    <span th:if="${gameResponse}" class="text-success">
+                            <i class="fas fa-check-circle"></i> Да
+                        </span>
+                    <span th:unless="${gameResponse}" class="text-danger">
+                            <i class="fas fa-times-circle"></i> Нет
+                        </span>
+                </p>
+                <p class="mb-0" th:if="${gameResponse}">
+                    Статус API:
+                    <span th:if="${gameResponse.success}" class="text-success">
+                            <i class="fas fa-check"></i> Успех
+                        </span>
+                    <span th:unless="${gameResponse.success}" class="text-danger">
+                            <i class="fas fa-exclamation-triangle"></i> Ошибка
+                        </span>
+                </p>
             </div>
 
-            <div class="spectators">
-                <h4><i class="fas fa-eye"></i> Наблюдатели: <span id="spectatorCount">0</span></h4>
-                <div id="spectatorList"></div>
+            <!-- Если данные есть -->
+            <div th:if="${gameResponse}">
+                <div th:if="${gameResponse.success}">
+                    <!-- Статус и очередь хода -->
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-info-circle"></i> Статус игры
+                                    </h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h2 class="card-title">
+                                            <span th:text="${gameResponse.status}"
+                                                  class="status-badge bg-success">
+                                                ACTIVE
+                                            </span>
+                                    </h2>
+                                    <p class="card-text text-muted mt-2"
+                                       th:text="${gameResponse.message}">
+                                        Ход ожидается
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header bg-dark text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-exchange-alt"></i> Очередь хода
+                                    </h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <div class="turn-indicator">
+                                            <span th:if="${gameResponse.currentTurn == 'WHITE'}"
+                                                  class="text-dark">
+                                                <i class="fas fa-chess-king piece-icon"></i>
+                                                Ходят <strong>БЕЛЫЕ</strong>
+                                            </span>
+                                        <span th:if="${gameResponse.currentTurn == 'BLACK'}"
+                                              class="text-dark">
+                                                <i class="fas fa-chess-king piece-icon"></i>
+                                                Ходят <strong>ЧЕРНЫЕ</strong>
+                                            </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Игроки -->
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <div class="card white-card h-100 player-card">
+                                <div class="card-header bg-light">
+                                    <h4 class="mb-0">
+                                        <i class="fas fa-chess-king text-dark"></i>
+                                        Белые фигуры
+                                    </h4>
+                                </div>
+                                <div class="card-body text-center">
+                                    <div th:if="${gameResponse.whitePlayer}">
+                                        <div class="mb-3">
+                                            <i class="fas fa-user-circle fa-4x text-dark"></i>
+                                        </div>
+                                        <h3 class="card-title"
+                                            th:text="${gameResponse.whitePlayer.name}">
+                                            Alex
+                                        </h3>
+                                        <div class="mt-3">
+                                                <span class="badge bg-warning text-dark fs-6">
+                                                    <i class="fas fa-star"></i>
+                                                    Рейтинг:
+                                                    <span th:text="${gameResponse.whitePlayer.rating}">
+                                                        1200
+                                                    </span>
+                                                </span>
+                                        </div>
+                                    </div>
+                                    <div th:unless="${gameResponse.whitePlayer}">
+                                        <div class="py-4">
+                                            <i class="fas fa-user-clock fa-4x text-muted"></i>
+                                            <h4 class="text-muted mt-3">Ожидание игрока...</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <div class="card black-card h-100 player-card">
+                                <div class="card-header bg-dark">
+                                    <h4 class="mb-0 text-white">
+                                        <i class="fas fa-chess-king"></i>
+                                        Черные фигуры
+                                    </h4>
+                                </div>
+                                <div class="card-body text-center">
+                                    <div th:if="${gameResponse.blackPlayer}">
+                                        <div class="mb-3">
+                                            <i class="fas fa-user-circle fa-4x text-white"></i>
+                                        </div>
+                                        <h3 class="card-title text-white"
+                                            th:text="${gameResponse.blackPlayer.name}">
+                                            Player2
+                                        </h3>
+                                        <div class="mt-3">
+                                                <span class="badge bg-light text-dark fs-6">
+                                                    <i class="fas fa-star"></i>
+                                                    Рейтинг:
+                                                    <span th:text="${gameResponse.blackPlayer.rating}">
+                                                        1200
+                                                    </span>
+                                                </span>
+                                        </div>
+                                    </div>
+                                    <div th:unless="${gameResponse.blackPlayer}">
+                                        <div class="py-4">
+                                            <i class="fas fa-user-clock fa-4x text-white-50"></i>
+                                            <h4 class="text-white-50 mt-3">Ожидание игрока...</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Шахматная доска -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-success text-white">
+                            <h4 class="mb-0">
+                                <i class="fas fa-chess-board"></i> Шахматная доска
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center mb-3">
+                                <span class="badge bg-info">Текстовое представление</span>
+                            </div>
+                            <pre class="chess-board-text mb-0"
+                                 th:text="${gameResponse.board}">
+                                    rnbqkbnr
+                                    pppppppp
+                                    ........
+                                    ........
+                                    ........
+                                    ........
+                                    PPPPPPPP
+                                    RNBQKBNR
+                                    Side: WHITE
+                                </pre>
+                        </div>
+                    </div>
+
+                    <!-- Техническая информация -->
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white">
+                            <h4 class="mb-0">
+                                <i class="fas fa-code"></i> Технические данные
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <h5><i class="fas fa-file-code"></i> FEN нотация:</h5>
+                                <div class="fen-code" th:text="${gameResponse.fen}">
+                                    rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+                                </div>
+                            </div>
+
+                            <div th:if="${gameResponse.additionalInfo}" class="row">
+                                <div class="col-md-6">
+                                    <p><i class="far fa-calendar"></i>
+                                        <strong>Создана:</strong>
+                                        <span th:text="${gameResponse.additionalInfo.createdAt}">
+                                               2026-01-08T23:40:32.892738
+                                           </span>
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><i class="fas fa-arrows-alt-h"></i>
+                                        <strong>Ходов:</strong>
+                                        <span th:text="${gameResponse.additionalInfo.movesCount}">
+                                               0
+                                           </span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div th:if="${gameResponse.legalMoves}" class="mt-3">
+                                <h5><i class="fas fa-directions"></i> Возможные ходы:</h5>
+                                <div class="d-flex flex-wrap gap-2">
+                                        <span th:each="move : ${gameResponse.legalMoves}"
+                                              class="badge bg-light text-dark border">
+                                            <span th:text="${move}">e2e4</span>
+                                        </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Если ошибка API -->
+                <div th:unless="${gameResponse.success}" class="alert alert-danger mt-4">
+                    <h4 class="alert-heading">
+                        <i class="fas fa-exclamation-triangle"></i> Ошибка загрузки
+                    </h4>
+                    <p th:text="${gameResponse.message}">Сообщение об ошибке</p>
+                </div>
+            </div>
+
+            <!-- Если нет gameResponse -->
+            <div th:unless="${gameResponse}" class="alert alert-warning mt-4">
+                <h4 class="alert-heading">
+                    <i class="fas fa-exclamation-circle"></i> Данные не загружены
+                </h4>
+                <p>Не удалось получить информацию об игре.</p>
+                <hr>
+                <p class="mb-0">
+                    Проверьте API вручную:
+                    <a th:href="@{'/api/games/' + ${gameId} + '?playerId=0'}"
+                       target="_blank" class="alert-link">
+                        /api/games/<span th:text="${gameId}"></span>?playerId=0
+                    </a>
+                </p>
+            </div>
+
+            <!-- Панель действий -->
+            <div class="mt-4 pt-4 border-top">
+                <div class="d-flex flex-wrap justify-content-center gap-3">
+                    <a th:href="@{/api/web/}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-home"></i> На главную
+                    </a>
+                    <a th:href="@{/api/web/games}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-list"></i> Все игры
+                    </a>
+                    <a th:href="@{'/api/games/' + ${gameId} + '?playerId=0'}"
+                       target="_blank" class="btn btn-info btn-lg">
+                        <i class="fas fa-code"></i> API (JSON)
+                    </a>
+                    <button onclick="window.location.reload()" class="btn btn-warning btn-lg">
+                        <i class="fas fa-sync-alt"></i> Обновить
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</main>
 
-<!-- WebSocket соединение -->
-<script th:inline="javascript">
-    const gameId = [[${gameId}]];
-    const wsUrl = [[${wsUrl}]] || ('ws://' + window.location.host + '/ws/game/' + gameId);
+    <!-- Футер -->
+    <div class="text-center text-white mt-4">
+        <p class="mb-0">
+            <small>
+                Chess API •
+                <span id="current-time"></span> •
+                Авто-обновление: <span id="countdown">10</span>с
+            </small>
+        </p>
+    </div>
+</div>
 
-    // Подключаем WebSocket
-    const socket = new WebSocket(wsUrl);
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    socket.onopen = function() {
-        console.log('WebSocket соединение установлено');
-    };
-
-    socket.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        handleGameUpdate(data);
-    };
-
-    socket.onclose = function() {
-        console.log('WebSocket соединение закрыто');
-    };
-
-    // Функция для обновления состояния игры
-    function handleGameUpdate(data) {
-        // Обновляем доску
-        updateChessBoard(data.board);
-
-        // Обновляем информацию об игроках
-        document.getElementById('whitePlayer').textContent = data.whitePlayer || 'Ожидание...';
-        document.getElementById('blackPlayer').textContent = data.blackPlayer || 'Ожидание...';
-
-        // Обновляем время
-        document.getElementById('whiteTime').textContent = formatTime(data.whiteTime);
-        document.getElementById('blackTime').textContent = formatTime(data.blackTime);
-
-        // Обновляем статус
-        document.getElementById('gameStatus').textContent = data.status;
-        document.getElementById('currentTurn').innerHTML = 'Ход: <span>' +
-            (data.currentTurn === 'WHITE' ? 'белых' : 'черных') + '</span>';
-
-        // Обновляем историю ходов
-        updateMovesHistory(data.moves);
-    }
-
-    function formatTime(seconds) {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    }
-
-    function updateChessBoard(fen) {
-        // Здесь будет логика отрисовки доски
-        // Можно использовать chessboard.js или собственную реализацию
-        console.log('Обновление доски с FEN:', fen);
-    }
-
-    function updateMovesHistory(moves) {
-        const movesList = document.getElementById('movesList');
-        movesList.innerHTML = '';
-        moves.forEach((move, index) => {
-            const moveElement = document.createElement('div');
-            moveElement.className = 'move-item';
-            moveElement.textContent = `${index + 1}. ${move}`;
-            movesList.appendChild(moveElement);
-        });
-    }
-</script>
-
-<!-- Инициализация шахматной доски -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<!-- Кастомный JavaScript -->
 <script>
-    // Простая реализация шахматной доски
-    function initChessBoard() {
-        const board = document.getElementById('chessboard');
-        board.innerHTML = '';
+    // Обновление времени
+    function updateTime() {
+        const now = new Date();
+        document.getElementById('current-time').textContent =
+            now.toLocaleTimeString('ru-RU');
+    }
 
-        // Создаем 8x8 клеток
-        for (let row = 0; row < 8; row++) {
-            for (let col = 0; col < 8; col++) {
-                const square = document.createElement('div');
-                square.className = 'chess-square ' +
-                    ((row + col) % 2 === 0 ? 'light' : 'dark');
-                square.id = `sq${row}${col}`;
-                square.dataset.row = row;
-                square.dataset.col = col;
+    // Таймер авто-обновления
+    let countdown = 10;
+    function updateCountdown() {
+        document.getElementById('countdown').textContent = countdown;
+        if (countdown <= 0) {
+            console.log('Auto-refreshing page...');
+            window.location.reload();
+        }
+        countdown--;
+    }
 
-                // Добавляем обработчик клика
-                square.addEventListener('click', function() {
-                    handleSquareClick(row, col);
+    // Загрузка данных через API (дополнительная проверка)
+    function loadGameData() {
+        const gameId = '[[${gameId}]]';
+        if (gameId) {
+            fetch('/api/games/' + gameId + '?playerId=0')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('API data loaded:', data);
+                })
+                .catch(error => {
+                    console.error('API error:', error);
                 });
-
-                board.appendChild(square);
-            }
         }
     }
 
-    function handleSquareClick(row, col) {
-        const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-        const squareName = files[col] + (8 - row);
-        console.log('Кликнута клетка:', squareName);
-
-        // Отправляем ход на сервер через WebSocket
-        socket.send(JSON.stringify({
-            type: 'MOVE',
-            from: selectedSquare,
-            to: squareName,
-            gameId: gameId
-        }));
-    }
-
-    // Инициализация при загрузке страницы
+    // Инициализация
     document.addEventListener('DOMContentLoaded', function() {
-        initChessBoard();
+        console.log('Game page loaded for:', '[[${gameId}]]');
+        updateTime();
+        setInterval(updateTime, 1000);
+        setInterval(updateCountdown, 1000);
+        loadGameData();
 
-        // Копирование ссылки на игру
-        document.getElementById('copyLinkBtn').addEventListener('click', function() {
-            navigator.clipboard.writeText(window.location.href);
-            alert('Ссылка скопирована!');
-        });
+        // Авто-обновление страницы каждые 10 секунд
+        setTimeout(() => {
+            window.location.reload();
+        }, 10000);
     });
 </script>
 </body>
