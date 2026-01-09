@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Новая игра - Chess API</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-brand">
+            <i class="fas fa-chess-knight"></i>
+            <span>ChessAPI</span>
+        </div>
+        <ul class="navbar-menu">
+            <li><a th:href="@{/web/}">Главная</a></li>
+            <li><a th:href="@{/web/new-game}" class="active">Новая игра</a></li>
+            <li><a th:href="@{/web/games}">Все игры</a></li>
+        </ul>
+    </div>
+</nav>
+
+<main class="container">
+    <div class="create-game-form">
+        <h1>Создать новую игру</h1>
+
+        <!-- Сообщение об ошибке -->
+        <div th:if="${errorMessage}" class="alert alert-error">
+            <span th:text="${errorMessage}"></span>
+        </div>
+
+        <form th:action="@{/web/create-game}" method="post" id="createGameForm">
+            <div class="form-group">
+                <label for="playerName">Ваше имя:</label>
+                <input type="text" id="playerName" name="playerName"
+                       placeholder="Введите ваше имя" required>
+            </div>
+
+            <div class="form-group">
+                <label>Цвет фигур:</label>
+                <div class="color-options">
+                    <label class="color-option">
+                        <input type="radio" name="color" value="WHITE" checked>
+                        <div class="color-preview white"></div>
+                        <span>Белые</span>
+                    </label>
+                    <label class="color-option">
+                        <input type="radio" name="color" value="BLACK">
+                        <div class="color-preview black"></div>
+                        <span>Черные</span>
+                    </label>
+                    <label class="color-option">
+                        <input type="radio" name="color" value="RANDOM">
+                        <div class="color-preview random"></div>
+                        <span>Случайный</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Контроль времени:</label>
+                <select id="timeControl" name="timeControl">
+                    <option value="600">10 минут</option>
+                    <option value="1800" selected>30 минут</option>
+                    <option value="3600">1 час</option>
+                    <option value="0">Без ограничения</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg">
+                Создать игру
+            </button>
+        </form>
+    </div>
+</main>
+</body>
+</html>

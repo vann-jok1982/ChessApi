@@ -52,6 +52,12 @@ public class GameController {
         return ResponseEntity.ok(response);
     }
 
+    // Новый метод для веба (без playerId)
+    @GetMapping("/{gameId}/web")
+    public GameResponse getGameForWeb(@PathVariable String gameId) {
+        return gameService.getGameForWeb(gameId);
+    }
+
     @GetMapping("/waiting")
     public ResponseEntity<List<GameInfoResponse>> getWaitingGames() {
         log.info("GET /games/waiting");

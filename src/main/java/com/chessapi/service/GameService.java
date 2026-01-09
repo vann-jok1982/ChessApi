@@ -2,6 +2,7 @@ package com.chessapi.service;
 
 import com.chessapi.dto.*;
 import com.chessapi.model.*;
+import com.chessapi.model.Move;
 import com.chessapi.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -502,6 +503,7 @@ public class GameService {
                 .whitePlayer(buildPlayerInfo(game.getWhitePlayer()))
                 .currentTurn(engine != null ? engine.getSideToMove() : game.getCurrentTurn())
                 .board(board)
+                .fen(engine.getFen())              // FEN для веб-доски ⬅️ ДОБАВИТЬ!
                 .playerColor(isPlayerInGame ? playerColor.toString() : "OBSERVER");
 
         // Добавляем легальные ходы
@@ -751,6 +753,66 @@ public class GameService {
         } catch (Exception e) {
             log.error("Ошибка обработки ничьи: {}", e.getMessage());
             return GameResponse.error("Ошибка: " + e.getMessage());
+        }
+    }
+    // GameService.java - добавьте этот метод
+    public GameResponse getGameForWeb(String gameId) {
+        try {
+            Game game = gameRepository.findByPublicId(gameId)
+                    .orElseThrow(() -> new IllegalArgumentException("Игра не найдена: " + gameId));
+
+            ChessEngine engine = new ChessEngine(game.getCurrentFen());
+
+            // Для веба передаем null как playerId (наблюдатель)
+            return buildGameResponse(game, null, engine);
+
+        } catch (Exception e) {
+            log.error("Ошибка получения игры для веба: {}", e.getMessage(), e);
+            return GameResponse.error("Ошибка загрузки игры: " + e.getMessage());
+        }
+    }
+
+
+    public GameResponse getGameState(String publicId, MoveRequest request) {
+        try {
+            Game game = gameRepository.findByPublicId(publicId)
+                    .orElseThrow(() -> new IllegalArgumentException("Игра не найдена"));
+
+            ChessEngine engine = new ChessEngine(game.getCurrentFen());
+
+            // Определяем цвет текущего игрока (если он участвует)
+            String playerColor = "OBSERVER";
+            if (request.getPlayerId() != null && request.getPlayerId() > 0) {
+                if (game.getWhitePlayer() != null &&
+                        game.getWhitePlayer().getTelegramId().equals(String.valueOf(request.getPlayerId()))) {
+                    playerColor = "WHITE";
+                } else if (game.getBlackPlayer() != null &&
+                        game.getBlackPlayer().getTelegramId().equals(String.valueOf(request.getPlayerId()))) {
+                    playerColor = "BLACK";
+                }
+            }
+            // Получаем легальные ходы как строки
+            List<String> legalMoves = engine.getLegalMoves().stream()
+                    .map(Object::toString)  // Преобразуем chesslib.Move в строку
+                    .collect(Collectors.toList());
+
+            return GameResponse.builder()
+                    .success(true)
+                    .gameId(game.getPublicId())
+                    .status(game.getStatus().toString())
+                    .whitePlayer(buildPlayerInfo(game.getWhitePlayer()))
+                    .blackPlayer(buildPlayerInfo(game.getBlackPlayer()))
+                    .currentTurn(game.getCurrentTurn().toString())
+                    .board(String.valueOf(engine.getBoard()))  // Текстовая доска
+                    .fen(engine.getFen())          // FEN для графической доски
+                    .message("Game loaded successfully")
+                    .legalMoves(legalMoves)
+                    .playerColor(playerColor)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Error getting game state", e);
+            return GameResponse.error("Ошибка загрузки игры: " + e.getMessage());
         }
     }
 }
